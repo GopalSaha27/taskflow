@@ -20,14 +20,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final taskProvider = context.watch<TaskProvider>();
-
     final tasks = taskProvider.tasks;
     final completedTasks = taskProvider.completedTasks;
     final progress = taskProvider.progress;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -54,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Thursday, November 19',
+                              'Your productivity starts here',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: AppColors.secondaryText,
@@ -94,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 28),
 
-                  // Purple Productivity Card
+                  // Productivity Card
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(22),
@@ -129,14 +127,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'You have ${taskProvider.pendingTasks} tasks remaining today.',
+                          'You have ${taskProvider.pendingTasks} tasks remaining.',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 13,
                           ),
                         ),
                         const SizedBox(height: 24),
-
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -158,7 +155,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         const SizedBox(height: 12),
-
                         ClipRRect(
                           borderRadius: BorderRadius.circular(20),
                           child: LinearProgressIndicator(
@@ -172,9 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 18),
-
                         Row(
                           children: [
                             const Icon(
@@ -208,7 +202,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-
                   Row(
                     children: [
                       Expanded(
@@ -264,7 +257,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-
                   Row(
                     children: [
                       Expanded(
@@ -295,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 28),
 
-                  // Today's Tasks
+                  // Task Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -375,10 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
         },
-        child: const Icon(
-          Icons.add_rounded,
-          size: 28,
-        ),
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
     );
   }
@@ -465,7 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Task Card
+  // Task Card with Edit and Delete
   Widget _buildTaskCard(TaskModel task) {
     final bool isDone = task.isCompleted;
 
@@ -545,9 +534,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
+          const SizedBox(width: 6),
+
           Container(
             padding: const EdgeInsets.symmetric(
-              horizontal: 10,
+              horizontal: 9,
               vertical: 6,
             ),
             decoration: BoxDecoration(
@@ -563,9 +554,120 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+
+          // Three Dot Menu
+          PopupMenuButton<String>(
+            icon: const Icon(
+              Icons.more_vert_rounded,
+              color: AppColors.secondaryText,
+            ),
+            onSelected: (value) {
+              if (value == 'edit') {
+                _editTask(task);
+              } else if (value == 'delete') {
+                _confirmDelete(task);
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.edit_outlined,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                    SizedBox(width: 10),
+                    Text('Edit Task'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                    SizedBox(width: 10),
+                    Text('Delete Task'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  // Edit Task
+  void _editTask(TaskModel task) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddTaskScreen(task: task),
+      ),
+    );
+  }
+
+  // Delete Confirmation
+  Future<void> _confirmDelete(TaskModel task) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Delete Task?',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.primaryText,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to delete "${task.title}"?',
+            style: TextStyle(
+              color: AppColors.secondaryText,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true && mounted) {
+      context.read<TaskProvider>().deleteTask(task.id);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Task deleted successfully!'),
+        ),
+      );
+    }
   }
 
   // Empty Task State

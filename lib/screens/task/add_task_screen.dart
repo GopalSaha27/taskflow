@@ -3,10 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../models/task_model.dart';
 import '../../providers/task_provider.dart';
 
 class AddTaskScreen extends StatefulWidget {
-  const AddTaskScreen({super.key});
+  final TaskModel? task;
+
+  const AddTaskScreen({
+    super.key,
+    this.task,
+  });
 
   @override
   State<AddTaskScreen> createState() => _AddTaskScreenState();
@@ -18,11 +24,32 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  DateTime selectedDate = DateTime.now();
-  TimeOfDay selectedTime = TimeOfDay.now();
+  late DateTime selectedDate;
+  late TimeOfDay selectedTime;
 
-  String selectedPriority = 'Medium';
-  String selectedCategory = 'Work';
+  late String selectedPriority;
+  late String selectedCategory;
+
+  bool get isEditing => widget.task != null;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final task = widget.task;
+
+    _titleController.text = task?.title ?? '';
+    _descriptionController.text = task?.description ?? '';
+
+    selectedDate = task?.scheduledAt ?? DateTime.now();
+
+    selectedTime = task != null
+        ? TimeOfDay.fromDateTime(task.scheduledAt)
+        : TimeOfDay.now();
+
+    selectedPriority = task?.priority ?? 'Medium';
+    selectedCategory = task?.category ?? 'Work';
+  }
 
   @override
   void dispose() {
@@ -66,13 +93,27 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       selectedTime.minute,
     );
 
-    context.read<TaskProvider>().addTask(
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim(),
-      scheduledAt: scheduledAt,
-      priority: selectedPriority,
-      category: selectedCategory,
-    );
+    final provider = context.read<TaskProvider>();
+
+    if (isEditing) {
+      final updatedTask = widget.task!.copyWith(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        scheduledAt: scheduledAt,
+        priority: selectedPriority,
+        category: selectedCategory,
+      );
+
+      provider.updateTask(updatedTask);
+    } else {
+      provider.addTask(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        scheduledAt: scheduledAt,
+        priority: selectedPriority,
+        category: selectedCategory,
+      );
+    }
 
     Navigator.pop(context);
   }
@@ -82,9 +123,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Add New Task',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          isEditing ? 'Edit Task' : 'Add New Task',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -96,11 +137,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Task Title',
-                  style: _labelStyle,
-                ),
+                const Text('Task Title', style: _labelStyle),
                 const SizedBox(height: 9),
+
                 TextFormField(
                   controller: _titleController,
                   decoration: _inputDecoration(
@@ -119,6 +158,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
                 const Text('Description', style: _labelStyle),
                 const SizedBox(height: 9),
+
                 TextFormField(
                   controller: _descriptionController,
                   maxLines: 4,
@@ -158,6 +198,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
                 const Text('Priority', style: _labelStyle),
                 const SizedBox(height: 9),
+
                 DropdownButtonFormField<String>(
                   initialValue: selectedPriority,
                   decoration: _inputDecoration(
@@ -183,6 +224,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
                 const Text('Category', style: _labelStyle),
                 const SizedBox(height: 9),
+
                 DropdownButtonFormField<String>(
                   initialValue: selectedCategory,
                   decoration: _inputDecoration(
@@ -211,10 +253,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   height: 55,
                   child: ElevatedButton.icon(
                     onPressed: _saveTask,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text(
-                      'Save Task',
-                      style: TextStyle(
+                    icon: Icon(
+                      isEditing ? Icons.save_rounded : Icons.add_rounded,
+                    ),
+                    label: Text(
+                      isEditing ? 'Update Task' : 'Save Task',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
